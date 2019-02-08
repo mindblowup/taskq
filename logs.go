@@ -2,27 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/nezamy/jsondb"
 	"log"
 	"os"
 	"strconv"
 )
-
-var db *jsondb.Driver
-
-func initDB() {
-	var err error
-	db, err = jsondb.New(".taskq")
-	if err != nil {
-		printError(err.Error())
-	}
-}
-
-func addTaskLog(channel string, id string, q Queue) {
-	if err := db.Write(channel, id, q); err != nil {
-		printError(err.Error())
-	}
-}
 
 func addErrorLog(log string) {
 	addLog(*flagErrorLog, log)
@@ -45,11 +28,15 @@ func addLog(path string, cont interface{}) {
 }
 
 func printError(log string) {
-	fmt.Println("\033[" + strconv.Itoa(0) + ";" + strconv.Itoa(31) + "m" + log + "\033[0m")
+	printColor(0, 31, log)
 }
 func printSuccess(log string) {
-	fmt.Println("\033[" + strconv.Itoa(0) + ";" + strconv.Itoa(32) + "m" + log + "\033[0m")
+	printColor(0, 32, log)
 }
 func printInfo(log string) {
-	fmt.Println("\033[" + strconv.Itoa(0) + ";" + strconv.Itoa(34) + "m" + log + "\033[0m")
+	printColor(0, 34, log)
+}
+
+func printColor(fontType int, fontColor int, text string) {
+	fmt.Printf("\033["+strconv.Itoa(fontType)+";"+strconv.Itoa(fontColor)+"m%s\033[0m \n", text)
 }

@@ -29,7 +29,7 @@ type Queue struct {
 		// Schedule the task to start executing at a specific time. default is 0
 		StartAt int64
 		// Set a time limit for waiting a response before cancelling the request.
-		// i.e 30 means 30 sec, 0 means no limit default is 30
+		// i.e 30 means 30 sec, 0 means no limit default is 20
 		Timeout *int `json:"timout,omitempty"`
 		// How many retry to execute the task when failed. defualt is 3
 		Retry *int `json:"retry,omitempty"`

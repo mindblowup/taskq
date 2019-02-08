@@ -1,3 +1,5 @@
 .idea
 .taskq
 task
+taskq
+taskq_error.log
