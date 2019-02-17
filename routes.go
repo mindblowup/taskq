@@ -14,7 +14,13 @@ func routes() {
 }
 
 func list(w http.ResponseWriter, r *http.Request) {
-	res := ListResponse{true, channels, make(map[string]string)}
+	var res interface{}
+	if channel := r.URL.Query().Get("channel"); channel != "" {
+		res = ListChannel{true, channels[channel], make(map[string]string)}
+	} else {
+		res = ListResponse{true, channels, make(map[string]string)}
+	}
+
 	js, err := json.Marshal(res)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -66,8 +72,9 @@ func addHttpTask(w http.ResponseWriter, r *http.Request) {
 
 		for i, t := range bodyRes {
 			t.Parse()
-			t.Headers = r.Header
+			t.mergeHeaders(r.Header)
 			t = AddTask(channel, t)
+			fmt.Println(t.Headers)
 			results[i] = map[string]string{"id": t.Id, "name": t.Name, "url": t.Url}
 		}
 

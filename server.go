@@ -18,12 +18,17 @@ type ListResponse struct {
 	Data   Channels          `json:"data"`
 	Errors map[string]string `json:"errors"`
 }
+type ListChannel struct {
+	Status bool              `json:"status"`
+	Data   Tasks             `json:"data"`
+	Errors map[string]string `json:"errors"`
+}
 
 func runServer() {
 	routes()
 
 	printSuccess("server is running on " + listenAddress())
-	printInfo("token: " + *flagSecretToken)
+	printInfo("secret: " + *flagSecretToken)
 	//fmt.Println("To add new tasks send POST request to ")
 	//fmt.Println(listenAddress() + "/add-http-task?token=" + *flagSecretToken)
 	log.Fatal(http.ListenAndServe(*flagListen, nil))

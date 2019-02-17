@@ -18,9 +18,9 @@ func httpMiddleware(mw ...middleware) middleware {
 
 func tokenMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		t := r.URL.Query().Get("token")
+		t := r.URL.Query().Get("secret")
 		if *flagSecretToken != t {
-			responseError(w, map[string]string{"token": "invalid token"})
+			responseError(w, map[string]string{"secret": "invalid token"})
 			return
 		}
 		next.ServeHTTP(w, r)

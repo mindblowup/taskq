@@ -1,33 +1,71 @@
 # TaskQ
-Asynchronously task queues over HTTP request
+Scheduling task queues for web service
+
+## Features
+- Scheduling the task by specific time
+- Support all HTTP methods for web `GET, POST, PUT, PATCH, DELETE`
+- Support channels
+- Automaticlly remove task after complete
+- Retring execute task if failure
+- allow you repeat the task ever you want 
+- recovering uncompleted tasks when restart TaskQ
+
+## Install
+**Binary** :
+> download from [release](https://github.com/mindblowup/taskq/releases) page and download yours.   
+```bash
+./taskq --secret="25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c"
+```
+
+**From Source**
+> You must have the `Go` environment installed
+```bash
+go get -u github.com/mindblowup/taskq
+```
+
+## Configration
+There no Configration file .
+Run `./taskq -h` you will see the options like this 
+```
+Usage of ./taskq:
+  -clear
+        Clear all previous uncompleted tasks
+  -error_log string
+        error logs (default "./taskq_error.log")
+  -failure_callback string
+        Api url will be called (POST request) when task failure after retries.
+  -listen string
+        the http listen address (default ":8001")
+  -retry int
+        How many retry to execute the task when failed (default 3)
+  -retry_delay int
+        Number of seconds you need to delay and retry to executing the task when failed (default 30)
+  -secret string
+        Secret token because taskQ is end to end  (default "aa8fc052f014fd97942ddcc012760e4c67ac39cce325d6cb136f29ec10420a1ccc88e8b5d32608250c8770955dbbddb599ab")
+  -timeout int
+        How many times of seconds limit for waiting a response before cancelling the request. 0 means no limit (default 20)
+```
 
 ## Usage
-```
-curl -X POST \
-    'http://localhost:8001/add-http-task?token=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355cdbc5b9b5a185c38f500083c5721ff59ae77718' \
-    -H 'Content-Type: application/json' \
-    -d '[
-        {
-            "name": "Send email to user10",
-            "url": "http://yourwebservice.com/api/v1/send-mail",
-            "data": {
-                "id": "10",
-                "email": "user1@example.com",
-                "type": "welcome"
-            }
-        },
-        {
-            "name": "Send SMS to user10",
-            "url": "http://yourwebservice.com/api/v1/send-sms",
-            "data": {
-                "id": "10",
-                "phone": "+201234567890",
-                "type": "welcome"
-            }
-        }
-    ]'
-```
+To add a task just send a `POST` request to **TaskQ** from anywhere 
+You can add one task or more in the same request
 
+```
+POST http://localhost:8001/add-http-task?secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
+#### Body (Array of JSON)
+
+| Name    | Type     | Required or optional |Description |
+| --------|:--------:|:--------:|:--------|
+| `name`  | `string` | `required` |name for task|
+| `url` | `string` | `required` | full url for the webservice |
+|`body` | `object`| `optional` | the body of request will be send to the webservice |
+| `headers` | `object`| `optional` | the HTTP headers. may webservice required special headers like Authentication, Authorization ... |
+| `options` | `object`| `optional` | see [Options](#options) for more details|
+
+
+
+### PHP
 ```php
 <?php
 
@@ -36,7 +74,7 @@ $request->setUrl('http://localhost:8001/add-http-task');
 $request->setMethod(HTTP_METH_POST);
 
 $request->setQueryData(array(
-    'token' => '25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355cdbc5b9b5a185c38f500083c5721ff59ae77718'
+    'secret' => '25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c'
 ));
 
 $request->setHeaders(array(
@@ -74,19 +112,24 @@ try {
 
 ```
 
+
+### Node.js
 ```javascript
 var request = require("request");
 
 var options = {
     method: 'POST',
     url: 'http://localhost:8001/add-http-task',
-    qs: { token: '25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355cdbc5b9b5a185c38f500083c5721ff59ae77718' },
+    qs: { token: '25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c' },
     headers: {'Content-Type': 'application/json' },
     body: 
     [ 
         {
+            // name for job (required)
             name: "Send email to user10",
+            // full url for the webservice (required)
             url: "http://yourwebservice.com/api/v1/send-mail",
+            //a body of request (optional)
             data: {
                 id: "10",
                 email: "user1@example.com",
@@ -100,6 +143,19 @@ var options = {
                 id: "10",
                 phone: "+201234567890",
                 type: "welcome"
+            }
+        },
+        {
+            name: "Update Payment Status for user10",
+            url: "https://yourwebservice.com/api/v1/update-payment-status/10",
+            // you can add HTTP headers for every task 
+            headers: {
+                Authorization: "Basic YWxhZGRpbjpvcGVuc2VzYW1l"
+            },
+            options: {
+                method: "PUT",
+                repeat: 0, //forever
+                every: 60*60*24, //every day
             }
         }
     ],
@@ -115,27 +171,22 @@ request(options, function (error, response, body) {
 ```
 
 ### Options
-```
+``` php
 [
-    {
-        "name": "Update Payment Status for user10",
-        "url": "http://yourwebservice.com/api/v1/update-payment-status/10",
-        "options": {
-            "method": "PUT",
-            "repeat": 0,
-            "every": 60*60*24,
-            "startAt": 0,
-            "retry" : 5,
-            "retry_delay": 10
-        }
-    },
-    {
-        "name": "Send SMS to user1",
-        "url": "http://yourwebservice.com/api/v1/send-sms",
-        "data": {
-            "id": "10",
-            "phone": "+201234567890",
-            "type": "welcome"
+    {   
+        // name for job (required)
+        name: "Update Payment Status for user10",
+        // full url for the webservice (required)
+        url: "http://yourwebservice.com/api/v1/update-payment-status/10",
+        //a body of request (optional)
+        data: {},
+        options: {
+            method: "PUT",
+            repeat: 0, //forever
+            every: 60*60*24,
+            startAt: 0,
+            retry: 5,
+            retry_delay: 10
         }
     }
 ]

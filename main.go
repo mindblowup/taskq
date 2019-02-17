@@ -11,7 +11,7 @@ import (
 
 var (
 	flagListen          = flag.String("listen", ":8001", "the http listen address")
-	flagSecretToken     = flag.String("token", tokenGenerator(), "Secret token because taskQ is end to end ")
+	flagSecretToken     = flag.String("secret", tokenGenerator(), "Secret token because taskQ is end to end ")
 	flagTimeout         = flag.Int("timeout", 20, "How many times of seconds limit for waiting a response before cancelling the request. 0 means no limit")
 	flagRetry           = flag.Int("retry", 3, "How many retry to execute the task when failed")
 	flagRetryDelay      = flag.Int("retry_delay", 30, "Number of seconds you need to delay and retry to executing the task when failed")
@@ -24,13 +24,13 @@ var (
 const (
 	version = "v1.0.0"
 	welcome = `
-		 _____         _     ___              
-		|_   _|_ _ ___| | __/ _ \             
-		  | |/ _' / __| |/ / | | |            
-		  | | (_| \__ \   <| |_| |            
-		  |_|\__'_|___/_|\_\\__\_\  ` + version + `   
+  _____         _     ___              
+ |_   _|_ _ ___| | __/ _ \             
+   | |/ _' / __| |/ / | | |            
+   | | (_| \__ \   <| |_| |            
+   |_|\__'_|___/_|\_\\__\_\  ` + version + `   
 
- Asynchronously task queues over http request
+Scheduling task queues for web service
 
 ==============================================
 `

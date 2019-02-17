@@ -12,12 +12,13 @@ import (
 )
 
 type Queue struct {
-	Id      string
-	Name    string                 `json:"name"`
-	Data    map[string]interface{} `json:"data"`
-	Url     string                 `json:"url"`
-	Headers http.Header
-	Options struct {
+	Id            string
+	Name          string                 `json:"name"`
+	Data          map[string]interface{} `json:"data"`
+	Url           string                 `json:"url"`
+	Headers       http.Header
+	CustomHeaders map[string]string `json:"headers"`
+	Options       struct {
 		// Request method. default is "POST"
 		Method string
 		// How many times repeat this task
@@ -79,6 +80,22 @@ func (q *Queue) Parse() {
 	q.CreatedAt = now
 	q.NextExecute = q.Options.StartAt
 
+}
+
+func (q *Queue) mergeHeaders(header http.Header) {
+	headers := make(http.Header, len(header))
+	for k, vv := range header {
+		vv2 := make([]string, len(vv))
+		copy(vv2, vv)
+		headers[k] = vv2
+	}
+	if len(q.CustomHeaders) > 0 {
+		for k, v := range q.CustomHeaders {
+			headers.Set(k, v)
+		}
+	}
+
+	q.Headers = headers
 }
 
 func (q *Queue) exec() bool {
@@ -145,32 +162,35 @@ func (q *Queue) sendRequest(reqType string) bool {
 		Timeout: time.Duration(*q.Options.Timeout) * time.Second,
 	}
 	res, err := client.Do(req)
+	if res != nil {
+		defer func() {
+			if err := res.Body.Close(); err != nil {
+				addErrorLog("---------------------------------------------")
+				addErrorLog(err.Error())
+			}
+		}()
+
+		body, _ := ioutil.ReadAll(res.Body)
+		success := res.StatusCode < 299
+		if !strings.Contains(res.Header.Get("Content-Type"), "application/json") {
+			success = false
+		}
+		if !success {
+			addErrorLog("---------------------------------------------")
+			addErrorLog("Response Status " + res.Status)
+			addErrorLog("Request : " + q.Options.Method + " " + q.Url)
+			requestBody, _ := json.Marshal(q.Data)
+			addErrorLog("Request Body : " + string(requestBody))
+			addErrorLog("Response : " + string(body))
+		}
+		return success
+	}
 	if err != nil {
 		addErrorLog("---------------------------------------------")
 		addErrorLog(err.Error())
 		panic(err)
 	}
-
-	defer res.Body.Close()
-
-	//fmt.Println(res.Header.Get("Content-Type"))
-	//fmt.Println("response Status:", resp.Status)
-	//fmt.Println("response Headers:", resp.Header)
-	body, _ := ioutil.ReadAll(res.Body)
-	//fmt.Println("response Body:", string(body))
-	success := res.StatusCode < 299
-	if !strings.Contains(res.Header.Get("Content-Type"), "application/json") {
-		success = false
-	}
-	if !success {
-		addErrorLog("---------------------------------------------")
-		addErrorLog("Response Status " + res.Status)
-		addErrorLog("Request : " + q.Options.Method + " " + q.Url)
-		requestBody, _ := json.Marshal(q.Data)
-		addErrorLog("Request Body : " + string(requestBody))
-		addErrorLog("Response : " + string(body))
-	}
-	return success
+	return false
 }
 
 func (q *Queue) setNextExecute(now int64) {
