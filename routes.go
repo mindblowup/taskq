@@ -11,6 +11,7 @@ func routes() {
 	http.Handle("/list", httpMiddleware(tokenMiddleware)(list))
 	http.Handle("/clear", httpMiddleware(tokenMiddleware)(clear))
 	http.Handle("/add-http-task", httpMiddleware(tokenMiddleware)(addHttpTask))
+	http.Handle("/remove-http-task", httpMiddleware(tokenMiddleware)(removeHttpTask))
 }
 
 func list(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +37,7 @@ func list(w http.ResponseWriter, r *http.Request) {
 }
 
 func clear(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	if r.Method == "DELETE" {
 		collections := r.URL.Query().Get("collection")
 		var list []string
 		if collections != "" {
@@ -74,12 +75,20 @@ func addHttpTask(w http.ResponseWriter, r *http.Request) {
 			t.Parse()
 			t.mergeHeaders(r.Header)
 			t = AddTask(channel, t)
-			fmt.Println(t.Headers)
+			//fmt.Println(t.Headers)
 			results[i] = map[string]string{"id": t.Id, "name": t.Name, "url": t.Url}
 		}
 
 		responseSuccess(w, results)
 		fmt.Println("Tasks in progress:", tasksTotal[channel]-tasksComplete[channel], "Tasks Complete", tasksComplete[channel])
+	}
+}
+
+func removeHttpTask(_ http.ResponseWriter, r *http.Request) {
+	if r.Method == "DELETE" {
+		channel := getChannel(r)
+		id := r.URL.Query().Get("id")
+		removeTask(channels[channel], channel, id)
 	}
 }
 

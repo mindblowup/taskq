@@ -31,7 +31,7 @@ type Queue struct {
 		StartAt int64
 		// Set a time limit for waiting a response before cancelling the request.
 		// i.e 30 means 30 sec, 0 means no limit default is 20
-		Timeout *int `json:"timout,omitempty"`
+		Timeout *int `json:"timeout,omitempty"`
 		// How many retry to execute the task when failed. defualt is 3
 		Retry *int `json:"retry,omitempty"`
 		// Number of seconds you need to delay and retry to executing the task when failed. defailt is 30
@@ -44,6 +44,10 @@ type Queue struct {
 	CreatedAt   int64
 	Repeat      int
 	Tries       int
+	Response    struct {
+		Status string
+		Body   string
+	}
 	//Failed bool
 }
 
@@ -100,6 +104,10 @@ func (q *Queue) mergeHeaders(header http.Header) {
 
 func (q *Queue) exec() bool {
 	now := time.Now().Unix()
+	if q.Tries > 0 {
+		addErrorLog("---------------------------------------------")
+		addErrorLog("Retry " + q.Name)
+	}
 	if q.sendRequest("execute") {
 		//addCompleteLog(q)
 		q.LastExecute = now
@@ -117,12 +125,10 @@ func (q *Queue) exec() bool {
 			}
 		} else {
 			q.NextExecute = func() int64 {
-				//*q.Options.Retry--
 				return now + int64(*q.Options.RetryDelay)
 			}()
 		}
 		q.Tries++
-		//q.Failed = true
 
 		return false
 	}
@@ -154,6 +160,7 @@ func (q *Queue) sendRequest(reqType string) bool {
 	if reqType == "failure" {
 		url = *q.Options.FailureCallback
 		method = "POST"
+		jsonValue, _ = json.Marshal(q)
 	}
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonValue))
@@ -165,6 +172,8 @@ func (q *Queue) sendRequest(reqType string) bool {
 	if res != nil {
 		defer func() {
 			if err := res.Body.Close(); err != nil {
+				q.Response.Body = err.Error()
+				q.Response.Status = res.Status
 				addErrorLog("---------------------------------------------")
 				addErrorLog(err.Error())
 			}
@@ -176,7 +185,11 @@ func (q *Queue) sendRequest(reqType string) bool {
 			success = false
 		}
 		if !success {
+			q.Response.Body = string(body)
+			q.Response.Status = res.Status
+
 			addErrorLog("---------------------------------------------")
+			addErrorLog("failure " + q.Name)
 			addErrorLog("Response Status " + res.Status)
 			addErrorLog("Request : " + q.Options.Method + " " + q.Url)
 			requestBody, _ := json.Marshal(q.Data)
@@ -186,22 +199,27 @@ func (q *Queue) sendRequest(reqType string) bool {
 		return success
 	}
 	if err != nil {
+		q.Response.Body = err.Error()
 		addErrorLog("---------------------------------------------")
+		addErrorLog("failure " + q.Name)
 		addErrorLog(err.Error())
-		panic(err)
+		//panic(err)
 	}
 	return false
 }
 
 func (q *Queue) setNextExecute(now int64) {
-	q.Tries = 0
-	if *q.Options.Repeat == 1 || *q.Options.Repeat > 0 && q.Repeat == *q.Options.Repeat {
+
+	// if is one time execute or specific number
+	if *q.Options.Repeat == 1 || *q.Options.Repeat > 0 && q.Repeat+1 == *q.Options.Repeat || *q.Options.Repeat == 0 && *q.Options.Retry == q.Tries {
 		// delete
 		q.NextExecute = 0
 	} else {
+		// if more than one time execute
 		q.NextExecute = func() int64 {
 			q.Repeat++
 			return now + q.Options.Every
 		}()
 	}
+	q.Tries = 0
 }

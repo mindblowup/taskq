@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -49,6 +50,7 @@ func parseBody(r *http.Request, body interface{}) {
 		addErrorLog(err.Error())
 	}
 	if err = json.Unmarshal(b, &body); err != nil {
+		fmt.Println(r.Body)
 		addErrorLog(err.Error())
 	}
 }

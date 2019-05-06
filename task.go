@@ -37,9 +37,12 @@ func AddTask(channel string, queue Queue) Queue {
 }
 
 func removeTask(queue Tasks, channel string, id string) {
+	taskName := queue[id].Name
 	delete(queue, id)
 	if err := db.Delete(channel, id); err != nil {
 		fmt.Println("Error", err)
+	} else {
+		printSuccess("Remove task " + taskName + " from channel " + channel)
 	}
 }
 
@@ -48,20 +51,28 @@ func runTasks() {
 	for {
 		count := len(channels)
 		if count > 0 {
-			WG.Add(count)
-			for channel, _ := range channels {
-				time.Sleep(time.Millisecond * 100)
+			for channel := range channels {
+				WG.Add(1)
 				go runChannelTasks(channel, &WG)
-
+				time.Sleep(time.Second)
 			}
 			WG.Wait()
 		}
-
+		time.Sleep(time.Second * 2)
 	}
 }
 
 func runChannelTasks(channel string, WG *sync.WaitGroup) {
-	defer WG.Done()
+	defer func() {
+		tasksCount := len(channels[channel])
+		//fmt.Println(channel, "has", tasksCount, "task");
+		WG.Done()
+		if tasksCount == 0 {
+			delete(channels, channel)
+		}
+
+	}()
+	//defer WG.Done()
 	for key, val := range channels[channel] {
 		if val.IsNeedToExecuteNow() {
 			fmt.Println("-----------------------------------------------------------")

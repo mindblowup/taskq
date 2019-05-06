@@ -69,49 +69,78 @@ POST http://localhost:8001/add-http-task?secret=25b01e511b5fc414032692658a4c1362
 ```php
 <?php
 
-$request = new HttpRequest();
-$request->setUrl('http://localhost:8001/add-http-task');
-$request->setMethod(HTTP_METH_POST);
+$taskq = new TaskQ\TaskQ(':8001', '1422a13e4a6ce5f2feb9910d2e86146df2b1942bac801469f66e');
+$taskq->setHeaders([
+    'global-header' => 'global value'
+]);
 
-$request->setQueryData(array(
-    'secret' => '25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c'
-));
+$taskq->use('email_channel')
+    ->addHttpTask(function (HttpTask $tsk){
+      $tsk->name('Send mail 1')
+          ->method('POST')
+          ->url('http://example.com/api/v1/send-mail')
+          ->data([
+              'userID' => 10,
+              'email' => 'email@example.com'
+          ])->headers([
+              'custom-header' => 'some value',
+              'Content-Type' => 'text/html'
+          ])->options(function (TaskOptions $opt){
+              $opt->every(60*60*24*7)
+                  ->startAt(strtotime('next friday'))
+                  ->forever();
+              return $opt;
+          });
+      return $tsk;
+});
+$taskq->addHttpTask(include 'tasks/email2.php');
+$taskq->use('sms')->addHttpTask(include 'tasks/sms.php');
 
-$request->setHeaders(array(
-    'Content-Type' => 'application/json'
-));
-
-$request->setBody('[
-    {
-        "name": "Send email to user10",
-        "url": "http://yourwebservice.com/api/v1/send-mail",
-        "data": {
-            "id": "10",
-            "email": "user1@example.com",
-            "type": "welcome"
-        }
-    },
-    {
-        "name": "Send SMS to user10",
-        "url": "http://yourwebservice.com/api/v1/send-sms",
-        "data": {
-            "id": "10",
-            "phone": "+201234567890",
-            "type": "welcome"
-        }
+foreach($taskq->send() as $channel => $task) {
+    if($task){
+        print_r($task);
+    }else{
+       print_r($taskq->getError($channel));
     }
-]');
-
-try {
-    $response = $request->send();
-
-    echo $response->getBody();
-} catch (HttpException $ex) {
-    echo $ex;
 }
+
+if($taskq->hasErrors()){
+    print_r($taskq->errors());
+}
+
 
 ```
 
+tasks/email2.php
+```php
+<?php
+use TaskQ\HttpTask;
+return function(HttpTask $tsk){
+    $tsk->name('Send mail 2')
+        ->url('http://example.com/api/v1/send-mail?data=sata')
+       ->data([
+           'userID' => 199,
+           'email' => 'email3@example.com'
+       ]);
+    return $tsk;
+};
+
+```
+
+tasks/sms.php
+```php
+<?php
+use TaskQ\HttpTask;
+return function(HttpTask $tsk){
+    $tsk->name('Send sms')
+        ->url('http://example.com/api/v1/send-sms')
+        ->data([
+            'userID' => 10,
+            'phone' => '+201234567891'
+        ]);
+    return $tsk;
+};
+```
 
 ### Node.js
 ```javascript
@@ -171,7 +200,7 @@ request(options, function (error, response, body) {
 ```
 
 ### Options
-``` php
+``` json
 [
     {   
         // name for job (required)
