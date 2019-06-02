@@ -73,6 +73,7 @@ POST http://localhost:8001/add-http-task?secret=25b01e511b5fc414032692658a4c1362
 
 
 ### PHP
+>Using [TaskQ client library for PHP](https://github.com/mindblowup/taskq-php)
 ```php
 <?php
 use TaskQ\TaskQ;
