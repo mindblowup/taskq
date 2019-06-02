@@ -191,20 +191,17 @@ request(options, function (error, response, body) {
 ``` json
 [
     {   
-        // name for job (required)
-        name: "Update Payment Status for user10",
-        // full url for the webservice (required)
-        url: "http://yourwebservice.com/api/v1/update-payment-status/10",
-        //a body of request (optional)
-        data: {},
-        options: {
-            method: "PUT",
-            repeat: 0, //forever
-            every: 60*60*24,
-            startAt: 0,
-            retry: 5,
-            retry_delay: 10,
-            failure_callback: "http://yourwebservice.com/api/v1/failure_callback"
+        "name": "Update Payment Status for user10",
+        "url": "http://yourwebservice.com/api/v1/update-payment-status/10",
+        "data": {},
+        "options": {
+            "method": "PUT",
+            "repeat": 0,
+            "every": 60*60*24,
+            "startAt": 0,
+            "retry": 5,
+            "retry_delay": 10,
+            "failure_callback": "http://yourwebservice.com/api/v1/failure_callback"
         }
     }
 ]
