@@ -197,7 +197,7 @@ request(options, function (error, response, body) {
         "options": {
             "method": "PUT",
             "repeat": 0,
-            "every": 60*60*24,
+            "every": 86400,
             "startAt": 0,
             "retry": 5,
             "retry_delay": 10,
