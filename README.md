@@ -5,14 +5,15 @@ Scheduling task queues for web service
 - Scheduling the task by specific time
 - Support all HTTP methods for web `GET, POST, PUT, PATCH, DELETE`
 - Support channels
-- Automaticlly remove task after complete
-- Retring execute task if failure
-- allow you repeat the task ever you want 
-- recovering uncompleted tasks when restart TaskQ
+- Automatically remove task after complete
+- Retrying execute task if failure
+- Allow you repeat the task ever you want 
+- Recovering uncompleted tasks when restart TaskQ
 
 ## Install
 **Binary** :
-> download from [release](https://github.com/mindblowup/taskq/releases) page and download yours.   
+> Download from [release](https://github.com/mindblowup/taskq/releases) page and download yours.   
+Then run this
 ```bash
 ./taskq --secret="25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c"
 ```
@@ -21,6 +22,12 @@ Scheduling task queues for web service
 > You must have the `Go` environment installed
 ```bash
 go get -u github.com/mindblowup/taskq
+```
+
+**For production**
+> You can use pm2 or docker
+```bash
+pm2 start /path/to/taskq -- --secret="25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c" --failure_callback="http://yourwebservice.com/api/v1/failure_callback"
 ```
 
 ## Configration
@@ -68,79 +75,60 @@ POST http://localhost:8001/add-http-task?secret=25b01e511b5fc414032692658a4c1362
 ### PHP
 ```php
 <?php
-
-$taskq = new TaskQ\TaskQ(':8001', '1422a13e4a6ce5f2feb9910d2e86146df2b1942bac801469f66e');
-$taskq->setHeaders([
-    'global-header' => 'global value'
-]);
-
-$taskq->use('email_channel')
-    ->addHttpTask(function (HttpTask $tsk){
-      $tsk->name('Send mail 1')
-          ->method('POST')
-          ->url('http://example.com/api/v1/send-mail')
-          ->data([
-              'userID' => 10,
-              'email' => 'email@example.com'
-          ])->headers([
-              'custom-header' => 'some value',
-              'Content-Type' => 'text/html'
-          ])->options(function (TaskOptions $opt){
-              $opt->every(60*60*24*7)
-                  ->startAt(strtotime('next friday'))
-                  ->forever();
-              return $opt;
-          });
-      return $tsk;
-});
-$taskq->addHttpTask(include 'tasks/email2.php');
-$taskq->use('sms')->addHttpTask(include 'tasks/sms.php');
-
-foreach($taskq->send() as $channel => $task) {
-    if($task){
-        print_r($task);
-    }else{
-       print_r($taskq->getError($channel));
-    }
-}
-
-if($taskq->hasErrors()){
-    print_r($taskq->errors());
-}
-
-
-```
-
-tasks/email2.php
-```php
-<?php
+use TaskQ\TaskQ;
 use TaskQ\HttpTask;
-return function(HttpTask $tsk){
-    $tsk->name('Send mail 2')
-        ->url('http://example.com/api/v1/send-mail?data=sata')
-       ->data([
-           'userID' => 199,
-           'email' => 'email3@example.com'
-       ]);
-    return $tsk;
-};
-
-```
-
-tasks/sms.php
-```php
-<?php
-use TaskQ\HttpTask;
-return function(HttpTask $tsk){
-    $tsk->name('Send sms')
-        ->url('http://example.com/api/v1/send-sms')
+require './vendor/autoload.php';
+$taskq = new TaskQ(':8001', '1f79ff70f7d2a26d4e1199b59ab8013d167298c02e5f2feb9910d21422a13e4a6ce86146df2b1968fc35542bac801469f66e');
+$taskq->addHttpTask(function (HttpTask $tsk){
+    $tsk->name('send_mail_to_user.10')
+        ->method('POST')
+        ->url('http://yourwebservice.com/api/v1/send-mail')
         ->data([
-            'userID' => 10,
-            'phone' => '+201234567891'
+            'id' => 10,
+            'email' => 'email@example.com',
+            'type' => 'welcome'
         ]);
     return $tsk;
-};
+});
+
+$taskq->addHttpTask(function (HttpTask $tsk){
+    $tsk->name('Send SMS to user10')
+        ->method('POST')
+        ->url('http://yourwebservice.com/api/v1/send-sms')
+        ->data([
+            'id' => 10,
+            'phone' => '+201234567890',
+            'type' => 'welcome'
+        ]);
+    return $tsk;
+});
+
+$taskq->addHttpTask(function (HttpTask $tsk){
+    $tsk->name('Update Payment Status for user10')
+        ->method('PUT')
+        ->url('https://yourwebservice.com/api/v1/update-payment-status/10')
+        ->data([
+            'id' => 10,
+            'phone' => '+201234567890',
+            'type' => 'welcome'
+        ])->headers([
+            // maybe you need to send headers to API you use.
+            'Authorization' => 'Basic YWxhZGRpbjpvcGVuc2VzYW1l'
+        ])->options(function (TaskOptions $opt){
+            $opt->everyMonth(1) // execute every 1 month
+              ->startAt(strtotime('tomorrow 2pm'))
+              ->forever(); // repeat it forever
+            return $opt;
+        });
+    return $tsk;
+});
+$response = $taskq->send();
+if($taskq->hasErrors()){
+    http_response_code(400);
+    print_r($taskq->errors());
+}
 ```
+
 
 ### Node.js
 ```javascript
@@ -155,7 +143,7 @@ var options = {
     [ 
         {
             // name for job (required)
-            name: "Send email to user10",
+            name: "send_mail_to_user.10",
             // full url for the webservice (required)
             url: "http://yourwebservice.com/api/v1/send-mail",
             //a body of request (optional)
@@ -184,7 +172,7 @@ var options = {
             options: {
                 method: "PUT",
                 repeat: 0, //forever
-                every: 60*60*24, //every day
+                every: 60*60*24*30, //every day
             }
         }
     ],
@@ -215,7 +203,8 @@ request(options, function (error, response, body) {
             every: 60*60*24,
             startAt: 0,
             retry: 5,
-            retry_delay: 10
+            retry_delay: 10,
+            failure_callback: "http://yourwebservice.com/api/v1/failure_callback"
         }
     }
 ]
