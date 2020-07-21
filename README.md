@@ -12,11 +12,38 @@ Scheduling task queues for web service
 
 ## Install
 **Binary** :
-> Download from [release](https://github.com/mindblowup/taskq/releases) page and download yours.   
-Then run this
+> Download from [release](https://github.com/mindblowup/taskq/releases) page and download yours.
+> Go to the file path `cd /path/to/taskq_linux_amd64` and rename the file if you want to `taskq`
+> Add execute permission to the binary file `chmod +x ./taskq`
+
+you can specify secret token or let TaskQ generate it for you when you run 
 ```bash
-./taskq --secret="25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c"
+./taskq
+``` 
+
+You will get
 ```
+  _____         _     ___              
+ |_   _|_ _ ___| | __/ _ \             
+   | |/ _' / __| |/ / | | |            
+   | | (_| \__ \   <| |_| |            
+   |_|\__'_|___/_|\_\\__\_\  v1.0.0   
+
+Scheduling task queues for web service
+
+==============================================
+ 
+Load previous uncompleted tasks ... 
+server is running on http://localhost:8001 
+secret: fc0ea8c72502e4103ed7151d5a111e7dc70d5cbf935733bcca7ec3f0ad2474fbbea67ee81217997134b7104411e959395f50 
+
+```
+
+Then press `CTRL + C` and run this
+```bash
+./taskq --secret="fc0ea8c72502e4103ed7151d5a111e7dc70d5cbf935733bcca7ec3f0ad2474fbbea67ee81217997134b7104411e959395f50"
+```
+
 
 **From Source**
 > You must have the `Go` environment installed
