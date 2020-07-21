@@ -1,10 +1,10 @@
 # TaskQ
-Scheduling task queues for web service
+Scheduling task queues for web service over secured HTTP requests 
 
 ## Features
 - Scheduling the task by specific time
 - Support all HTTP methods for web `GET, POST, PUT, PATCH, DELETE`
-- Support channels
+- Support channels. `channels` means multiple threads 
 - Automatically remove task after complete
 - Retrying execute task if failure
 - Allow you repeat the task ever you want 
@@ -16,7 +16,8 @@ Scheduling task queues for web service
 > Go to the file path `cd /path/to/taskq_linux_amd64` and rename the file if you want to `taskq`
 > Add execute permission to the binary file `chmod +x ./taskq`
 
-you can specify secret token or let TaskQ generate it for you when you run 
+
+you can specify secret token or let TaskQ generate it for you when you run
 ```bash
 ./taskq
 ``` 
@@ -35,13 +36,13 @@ Scheduling task queues for web service
  
 Load previous uncompleted tasks ... 
 server is running on http://localhost:8001 
-secret: fc0ea8c72502e4103ed7151d5a111e7dc70d5cbf935733bcca7ec3f0ad2474fbbea67ee81217997134b7104411e959395f50 
+secret: 25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c 
 
 ```
 
 Then press `CTRL + C` and run this
 ```bash
-./taskq --secret="fc0ea8c72502e4103ed7151d5a111e7dc70d5cbf935733bcca7ec3f0ad2474fbbea67ee81217997134b7104411e959395f50"
+./taskq --secret="25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c"
 ```
 
 
@@ -56,6 +57,8 @@ go get -u github.com/mindblowup/taskq
 ```bash
 pm2 start /path/to/taskq -- --secret="25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c" --failure_callback="http://yourwebservice.com/api/v1/failure_callback"
 ```
+
+>  Use `failure_callback` if you want reports of failure requests e.g. you can save it to your logs 
 
 ## Configration
 There no Configration file .
@@ -84,8 +87,15 @@ Usage of ./taskq:
 To add a task just send a `POST` request to **TaskQ** from anywhere 
 You can add one task or more in the same request
 
+### API
+
+#### Add task default channel
 ```
 POST http://localhost:8001/add-http-task?secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
+Or add to other channel by add `?collection=channel-name`
+```
+POST http://localhost:8001/add-http-task?collection=mailChannel&secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
 ```
 #### Body (Array of JSON)
 
@@ -97,6 +107,32 @@ POST http://localhost:8001/add-http-task?secret=25b01e511b5fc414032692658a4c1362
 | `headers` | `object`| `optional` | the HTTP headers. may webservice required special headers like Authentication, Authorization ... |
 | `options` | `object`| `optional` | see [Options](#options) for more details|
 
+
+#### Remove task
+```
+DELETE http://localhost:8001/remove-http-task?id=taskId&secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
+Or remove task specific channel 
+```
+DELETE http://localhost:8001/remove-http-task?id=taskId&collection=mailChannel&secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
+
+#### Clear all tasks from all channels
+```
+DELETE http://localhost:8001/clear?secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
+Or remove all tasks specific channel 
+```
+DELETE http://localhost:8001/clear?collection=mailChannel,channel2&secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
+#### List all tasks from all channels
+```
+GET http://localhost:8001/list?secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
+Or list all tasks from specific channels
+```
+GET http://localhost:8001/list?collection=mailChannel,channel2&secret=25b01e511b5fc414032692658a4c1362d8c702cde8759f7fde612fe3e6355c
+```
 
 
 ### PHP
